@@ -177,7 +177,8 @@ async function sendInvites() {
 }
 
 function copyLink(link) {
-  navigator.clipboard.writeText(window.location.origin.replace(/:\d+$/, ':5173') + link);
+  const candidateBase = import.meta.env.VITE_CANDIDATE_APP_URL || 'http://localhost:5173';
+  navigator.clipboard.writeText(candidateBase.replace(/\/$/, '') + link);
 }
 </script>
 
