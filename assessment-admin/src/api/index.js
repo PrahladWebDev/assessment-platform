@@ -33,6 +33,7 @@ export const examsApi = {
   get: (id) => api.get(`/exams/${id}`).then((r) => r.data),
   create: (data) => api.post('/exams', data).then((r) => r.data),
   update: (id, data) => api.put(`/exams/${id}`, data).then((r) => r.data),
+  remove: (id) => api.delete(`/exams/${id}`),
   attachQuestions: (id, questionIds) =>
     api.post(`/exams/${id}/questions`, { questionIds }).then((r) => r.data),
   inviteCandidates: (id, candidates) =>
