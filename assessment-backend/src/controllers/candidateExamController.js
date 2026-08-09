@@ -6,6 +6,32 @@ const { runAgainstTestCase, scoreCodingAnswer, toCandidateSafeResults } = requir
 const { emitCandidateUpdate } = require('../realtime/socket');
 const { invalidateReportCache } = require('../services/reportCache');
 
+// POST /api/exam/:token/verify-email
+// Gate in front of the exam: candidate must type the email the invite was sent to
+// before getExamForCandidate will hand over questions. This is NOT a security boundary
+// — anyone with both the link and the correct email (which usually travel together in
+// the same invite) sails through — it exists to catch the far more common case of the
+// link being opened by the wrong person (forwarded mail, shared inbox, someone else's
+// browser) before they ever see exam content or the candidate's status flips to
+// "started". Doesn't persist anything; getExamForCandidate is still the source of truth
+// for starting the attempt.
+const verifyEmail = asyncHandler(async (req, res) => {
+  const { candidate } = req;
+  const submitted = String(req.body.email || '').trim().toLowerCase();
+
+  if (!submitted) {
+    res.status(400);
+    throw new Error('Enter the email address the invite was sent to.');
+  }
+
+  if (submitted !== candidate.email) {
+    res.status(403);
+    throw new Error('That email does not match the invite for this exam link.');
+  }
+
+  res.json({ verified: true });
+});
+
 // GET /api/exam/:token
 // Returns the exam with candidate-safe questions (no hidden test cases, no answer keys).
 const getExamForCandidate = asyncHandler(async (req, res) => {
@@ -386,6 +412,7 @@ const recordingHeartbeat = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  verifyEmail,
   getExamForCandidate,
   runCode,
   saveAnswer,
