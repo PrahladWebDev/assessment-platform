@@ -10,6 +10,23 @@ const requirements = [
   { key: 'screenShare', label: 'Screen sharing', desc: 'Your screen will be recorded throughout the exam.' },
   { key: 'fullscreenRequired', label: 'Fullscreen mode', desc: 'The exam must stay in fullscreen — exiting is logged.' },
 ];
+
+// Screen sharing (getDisplayMedia) isn't implemented by mobile browsers, and
+// fullscreen-lock behaves unreliably on mobile too. Rather than let candidates
+// hit a silent capture failure mid-exam, block proctored exams on mobile
+// devices up front, before any permission prompts fire.
+const MOBILE_UA_RE = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i;
+function isMobileDevice() {
+  const uaMobile = MOBILE_UA_RE.test(navigator.userAgent);
+  // iPadOS reports a desktop-Safari UA by default, so also flag touch-capable
+  // devices that lack getDisplayMedia support outright.
+  const noScreenCapture = !navigator.mediaDevices?.getDisplayMedia;
+  const touchLike = navigator.maxTouchPoints > 1 && noScreenCapture;
+  return uaMobile || touchLike;
+}
+
+const requiresScreenShare = !!props.proctoring.screenShare;
+const blockedOnMobile = requiresScreenShare && isMobileDevice();
 </script>
 
 <template>
@@ -17,25 +34,33 @@ const requirements = [
     <div class="card">
       <div class="eyebrow">Before you begin</div>
       <h1>This exam is proctored</h1>
-      <ul class="reqs">
-        <li v-for="r in requirements.filter((r) => proctoring[r.key])" :key="r.key">
-          <span class="dot" />
-          <div>
-            <div class="label">{{ r.label }}</div>
-            <div class="desc">{{ r.desc }}</div>
-          </div>
-        </li>
-      </ul>
-      <p class="note">
-        You'll be asked to grant these permissions in your browser. Leaving fullscreen, switching
-        tabs, or stopping screen share is logged as a violation
-        <template v-if="proctoring.maxViolations">
-          — after {{ proctoring.maxViolations }} the exam auto-submits.
-        </template>
-      </p>
-      <button :disabled="starting" @click="emit('begin')">
-        {{ starting ? 'Setting up…' : 'Grant permissions & begin' }}
-      </button>
+      <template v-if="blockedOnMobile">
+        <p class="note blocked">
+          This exam requires screen recording, which mobile browsers don't support. Please
+          switch to a desktop or laptop computer to take this exam.
+        </p>
+      </template>
+      <template v-else>
+        <ul class="reqs">
+          <li v-for="r in requirements.filter((r) => proctoring[r.key])" :key="r.key">
+            <span class="dot" />
+            <div>
+              <div class="label">{{ r.label }}</div>
+              <div class="desc">{{ r.desc }}</div>
+            </div>
+          </li>
+        </ul>
+        <p class="note">
+          You'll be asked to grant these permissions in your browser. Leaving fullscreen, switching
+          tabs, or stopping screen share is logged as a violation
+          <template v-if="proctoring.maxViolations">
+            — after {{ proctoring.maxViolations }} the exam auto-submits.
+          </template>
+        </p>
+        <button :disabled="starting" @click="emit('begin')">
+          {{ starting ? 'Setting up…' : 'Grant permissions & begin' }}
+        </button>
+      </template>
     </div>
   </div>
 </template>
@@ -113,6 +138,13 @@ h1 {
   color: var(--text-faint);
   line-height: 1.5;
   margin: 0 0 26px;
+}
+
+.note.blocked {
+  color: var(--signal-amber, var(--text-faint));
+  font-size: 0.88rem;
+  line-height: 1.6;
+  margin-bottom: 0;
 }
 
 button {
