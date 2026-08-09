@@ -3,6 +3,9 @@ import axios from 'axios';
 const client = axios.create({ baseURL: '/api/exam' });
 
 export default {
+  verifyEmail(token, email) {
+    return client.post(`/${token}/verify-email`, { email }).then((r) => r.data);
+  },
   getExam(token) {
     return client.get(`/${token}`).then((r) => r.data);
   },
