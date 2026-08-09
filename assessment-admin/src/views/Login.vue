@@ -27,6 +27,14 @@ async function submit() {
     loading.value = false;
   }
 }
+
+const DEMO_EMAIL = 'admin@example.com';
+const DEMO_PASSWORD = 'StrongPassword123!';
+
+function fillDemoCredentials() {
+  email.value = DEMO_EMAIL;
+  password.value = DEMO_PASSWORD;
+}
 </script>
 
 <template>
@@ -61,6 +69,25 @@ async function submit() {
               Sign in
             </v-btn>
           </v-form>
+
+          <v-divider class="my-5" />
+
+          <div class="text-caption text-medium-emphasis mb-2">
+            Just want to look around? Use the demo admin account.
+          </div>
+          <v-chip
+            variant="tonal"
+            color="primary"
+            prepend-icon="mdi-account-key-outline"
+            class="w-100 justify-start"
+            style="height: auto; padding-top: 8px; padding-bottom: 8px;"
+            @click="fillDemoCredentials"
+          >
+            <div class="d-flex flex-column align-start text-caption" style="line-height: 1.4;">
+              <span class="font-weight-medium">Click to autofill demo credentials</span>
+              <span class="text-medium-emphasis">{{ DEMO_EMAIL }} · {{ DEMO_PASSWORD }}</span>
+            </div>
+          </v-chip>
         </v-card>
       </v-col>
     </v-row>
