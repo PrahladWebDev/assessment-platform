@@ -5,6 +5,7 @@ const {
   listExams,
   getExam,
   updateExam,
+  deleteExam,
   attachQuestions,
   inviteCandidates,
   listCandidates,
@@ -18,6 +19,7 @@ router.post('/', createExam);
 router.get('/', listExams);
 router.get('/:id', getExam);
 router.put('/:id', updateExam);
+router.delete('/:id', deleteExam);
 router.post('/:id/questions', attachQuestions);
 router.post('/:id/candidates', inviteCandidates);
 router.get('/:id/candidates', listCandidates);
