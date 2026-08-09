@@ -1,8 +1,14 @@
 const asyncHandler = require('express-async-handler');
+const fs = require('fs');
+const path = require('path');
 const { nanoid } = require('nanoid');
 const Exam = require('../models/Exam');
 const Question = require('../models/Question');
 const Candidate = require('../models/Candidate');
+const Submission = require('../models/Submission');
+const Recording = require('../models/Recording');
+const { UPLOAD_ROOT } = require('../middleware/uploadRecording');
+const { invalidateReportCache } = require('../services/reportCache');
 
 // POST /api/exams
 const createExam = asyncHandler(async (req, res) => {
@@ -37,6 +43,48 @@ const updateExam = asyncHandler(async (req, res) => {
     throw new Error('Exam not found.');
   }
   res.json(exam);
+});
+
+// DELETE /api/exams/:id
+// Removes the exam along with everything scoped to it: candidates, their
+// submissions, and any recorded webcam/screen/audio files (both the Mongo
+// documents and the files on disk). The question bank itself is left alone —
+// questions are shared/reusable and only referenced by exam.questions, so
+// deleting an exam should never delete a question.
+const deleteExam = asyncHandler(async (req, res) => {
+  const exam = await Exam.findById(req.params.id);
+  if (!exam) {
+    res.status(404);
+    throw new Error('Exam not found.');
+  }
+
+  const examId = exam._id;
+
+  // Recording files live on disk and won't be cleaned up by a Mongo cascade,
+  // so remove those first. Best-effort per file: a missing/already-gone file
+  // shouldn't block the rest of the deletion.
+  const recordings = await Recording.find({ exam: examId }).select('_id filePath').lean();
+  for (const recording of recordings) {
+    try {
+      const absolutePath = path.join(UPLOAD_ROOT, recording.filePath);
+      if (absolutePath.startsWith(UPLOAD_ROOT) && fs.existsSync(absolutePath)) {
+        fs.unlinkSync(absolutePath);
+      }
+    } catch (err) {
+      console.error(`[exam-delete] failed to remove recording file for ${recording._id}:`, err.message);
+    }
+  }
+
+  await Promise.all([
+    Recording.deleteMany({ exam: examId }),
+    Submission.deleteMany({ exam: examId }),
+    Candidate.deleteMany({ exam: examId }),
+  ]);
+
+  await exam.deleteOne();
+  await invalidateReportCache(examId);
+
+  res.status(204).send();
 });
 
 // POST /api/exams/:id/questions  { questionIds: [...] }
@@ -107,6 +155,7 @@ module.exports = {
   listExams,
   getExam,
   updateExam,
+  deleteExam,
   attachQuestions,
   inviteCandidates,
   listCandidates,
