@@ -4,6 +4,7 @@ const { requireCandidateToken, requireCandidateTokenForProctoring } = require('.
 const { upload } = require('../middleware/uploadRecording');
 const { upload: uploadAnswer } = require('../middleware/uploadAnswer');
 const {
+  verifyEmail,
   getExamForCandidate,
   runCode,
   saveAnswer,
@@ -31,6 +32,16 @@ const submitLimiter = rateLimit({
   message: { message: 'Too many submit attempts. Please wait a moment.' },
 });
 
+// Keyed by token (not IP) same as the other candidate-facing limiters, mainly to slow
+// down repeated wrong-email guesses against a single link.
+const verifyEmailLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: env.rateLimits.verifyEmailPerMinute,
+  keyGenerator: (req) => req.params.token,
+  message: { message: 'Too many attempts. Please wait a moment and try again.' },
+});
+
+router.post('/:token/verify-email', verifyEmailLimiter, requireCandidateToken, verifyEmail);
 router.get('/:token', requireCandidateToken, getExamForCandidate);
 router.post('/:token/run', runLimiter, requireCandidateToken, runCode);
 router.post('/:token/answers', requireCandidateToken, saveAnswer);
