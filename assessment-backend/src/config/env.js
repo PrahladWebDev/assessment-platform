@@ -44,4 +44,9 @@ module.exports = {
 
   redisUrl: process.env.REDIS_URL || null,
   reportCacheTtlSeconds: parseInt(process.env.REPORT_CACHE_TTL_SECONDS || '15', 10),
+
+  recordingCleanup: {
+    retentionHours: parseInt(process.env.RECORDING_RETENTION_HOURS || '24', 10),
+    intervalMinutes: parseInt(process.env.RECORDING_CLEANUP_INTERVAL_MINUTES || '60', 10),
+  },
 };
