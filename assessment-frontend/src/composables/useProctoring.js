@@ -163,19 +163,36 @@ export function useProctoring(token, config, onAutoSubmitted) {
   // widely-used heuristic of comparing outer vs. inner window dimensions — a large,
   // sustained gap almost always means a docked devtools panel is open. Polled rather
   // than event-driven since there's no resize event guaranteed to fire for it.
+  //
+  // This gap is noisy though — it also shifts with browser zoom, OS display scaling,
+  // extra toolbars, or window snapping, none of which mean devtools is open. A single
+  // poll crossing the threshold used to report a violation immediately, so a one-off
+  // rendering blip (zoom rounding, a snap animation frame, etc.) could silently push a
+  // candidate over the exam's violation limit and auto-submit them with no actual
+  // wrongdoing. Now the gap has to stay above the threshold for several consecutive
+  // polls before it counts as a real, sustained devtools panel — a momentary blip
+  // resets the streak instead of firing.
   const DEVTOOLS_THRESHOLD_PX = 160;
+  const DEVTOOLS_CONSECUTIVE_POLLS_REQUIRED = 3; // ~3s sustained, at the 1s poll interval below
   let devtoolsOpen = false;
+  let devtoolsSuspectStreak = 0;
   let devtoolsPollId = null;
 
   function checkDevtools() {
     const widthGap = window.outerWidth - window.innerWidth;
     const heightGap = window.outerHeight - window.innerHeight;
     const isOpen = widthGap > DEVTOOLS_THRESHOLD_PX || heightGap > DEVTOOLS_THRESHOLD_PX;
-    if (isOpen && !devtoolsOpen) {
+
+    if (!isOpen) {
+      devtoolsSuspectStreak = 0;
+      devtoolsOpen = false;
+      return;
+    }
+
+    devtoolsSuspectStreak += 1;
+    if (devtoolsSuspectStreak >= DEVTOOLS_CONSECUTIVE_POLLS_REQUIRED && !devtoolsOpen) {
       devtoolsOpen = true;
       report('devtools', { widthGap, heightGap });
-    } else if (!isOpen) {
-      devtoolsOpen = false;
     }
   }
 
