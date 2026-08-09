@@ -1,5 +1,5 @@
 <script setup>
-import { ref, shallowRef, reactive, computed, onMounted } from 'vue';
+import { ref, shallowRef, reactive, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import examApi from '../api/examApi';
 import { useCountdown } from '../composables/useCountdown';
@@ -13,9 +13,17 @@ import FileUploadQuestion from '../components/FileUploadQuestion.vue';
 import ViolationBanner from '../components/ViolationBanner.vue';
 import RecordingIndicator from '../components/RecordingIndicator.vue';
 import ProctoringGate from './ProctoringGate.vue';
+import EmailGate from './EmailGate.vue';
 
 const props = defineProps({ token: { type: String, required: true } });
 const router = useRouter();
+
+// Email confirmation gate — runs before anything about the exam is fetched, so a
+// wrong-person click never sees exam content or flips the candidate's status to
+// "started". See verifyEmail() and candidateExamController.js's verify-email handler.
+const emailVerified = ref(false);
+const emailVerifying = ref(false);
+const emailError = ref('');
 
 const loading = ref(true);
 const loadError = ref('');
@@ -52,7 +60,22 @@ const proctoringReady = ref(false);
 const proctoringStarting = ref(false);
 let proctoring = null;
 
-onMounted(load);
+// Don't auto-load on mount — wait for the email gate to confirm identity first.
+
+async function verifyEmail(email) {
+  emailVerifying.value = true;
+  emailError.value = '';
+  try {
+    await examApi.verifyEmail(props.token, email);
+    emailVerified.value = true;
+    await load();
+  } catch (err) {
+    emailError.value =
+      err.response?.data?.message || 'That email does not match the invite for this link.';
+  } finally {
+    emailVerifying.value = false;
+  }
+}
 
 async function load() {
   loading.value = true;
@@ -189,7 +212,14 @@ async function doSubmit(isAuto) {
 </script>
 
 <template>
-  <div v-if="loading" class="state">Loading your exam…</div>
+  <EmailGate
+    v-if="!emailVerified"
+    :verifying="emailVerifying"
+    :error="emailError"
+    @confirm="verifyEmail"
+  />
+
+  <div v-else-if="loading" class="state">Loading your exam…</div>
   <div v-else-if="loadError" class="state error">{{ loadError }}</div>
 
   <ProctoringGate
