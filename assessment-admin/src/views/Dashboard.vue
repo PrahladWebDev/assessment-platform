@@ -8,6 +8,11 @@ const exams = ref([]);
 const loading = ref(true);
 const error = ref('');
 
+const deleteDialog = ref(false);
+const examToDelete = ref(null);
+const deleting = ref(false);
+const deleteError = ref('');
+
 onMounted(load);
 
 async function load() {
@@ -18,6 +23,28 @@ async function load() {
     error.value = err.response?.data?.message || 'Could not load exams.';
   } finally {
     loading.value = false;
+  }
+}
+
+function confirmDelete(exam) {
+  examToDelete.value = exam;
+  deleteError.value = '';
+  deleteDialog.value = true;
+}
+
+async function deleteExam() {
+  if (!examToDelete.value) return;
+  deleting.value = true;
+  deleteError.value = '';
+  try {
+    await examsApi.remove(examToDelete.value._id);
+    exams.value = exams.value.filter((e) => e._id !== examToDelete.value._id);
+    deleteDialog.value = false;
+    examToDelete.value = null;
+  } catch (err) {
+    deleteError.value = err.response?.data?.message || 'Could not delete exam.';
+  } finally {
+    deleting.value = false;
   }
 }
 
@@ -67,8 +94,35 @@ function openExam(id) {
           >
             View candidates
           </v-btn>
+          <v-spacer />
+          <v-btn
+            variant="text"
+            size="small"
+            color="error"
+            icon="mdi-delete-outline"
+            @click.stop="confirmDelete(exam)"
+          />
         </v-card-actions>
       </v-card>
     </v-col>
   </v-row>
+
+  <v-dialog v-model="deleteDialog" max-width="480" persistent>
+    <v-card>
+      <v-card-title class="text-h6">Delete exam?</v-card-title>
+      <v-card-text>
+        <p>
+          This permanently deletes <strong>{{ examToDelete?.title }}</strong> along with every
+          invited candidate, their submissions, and any recorded proctoring footage for this
+          exam. Questions in the question bank are not affected. This cannot be undone.
+        </p>
+        <v-alert v-if="deleteError" type="error" variant="tonal" class="mt-3">{{ deleteError }}</v-alert>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="text" :disabled="deleting" @click="deleteDialog = false">Cancel</v-btn>
+        <v-btn color="error" variant="flat" :loading="deleting" @click="deleteExam">Delete exam</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
