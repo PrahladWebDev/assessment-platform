@@ -73,7 +73,7 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           source: "assessment-frontend/dist/*"
           target: "/home/prahlad/assessment-platform/assessment-frontend/"
-          strip_components: 2
+          strip_components: 1
 
       - name: Reload Nginx
         uses: appleboy/ssh-action@v1.0.3
@@ -122,7 +122,7 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           source: "assessment-admin/dist/*"
           target: "/home/prahlad/assessment-platform/assessment-admin/"
-          strip_components: 2
+          strip_components: 1
 
       - name: Reload Nginx
         uses: appleboy/ssh-action@v1.0.3
