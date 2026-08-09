@@ -3,6 +3,7 @@ const app = require('./app');
 const connectDB = require('./config/db');
 const env = require('./config/env');
 const { initSocket } = require('./realtime/socket');
+const { startRecordingCleanupJob } = require('./jobs/recordingCleanup');
 
 async function start() {
   await connectDB();
@@ -11,6 +12,8 @@ async function start() {
   // Socket.IO can attach to the same port for live candidate-progress push.
   const httpServer = http.createServer(app);
   initSocket(httpServer);
+
+  startRecordingCleanupJob();
 
   httpServer.listen(env.port, () => {
     console.log(`[server] Listening on port ${env.port} (${env.nodeEnv})`);
