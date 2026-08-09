@@ -33,6 +33,7 @@ module.exports = {
   rateLimits: {
     runPerMinute: parseInt(process.env.RUN_RATE_LIMIT_PER_MINUTE || '15', 10),
     submitPerMinute: parseInt(process.env.SUBMIT_RATE_LIMIT_PER_MINUTE || '5', 10),
+    verifyEmailPerMinute: parseInt(process.env.VERIFY_EMAIL_RATE_LIMIT_PER_MINUTE || '10', 10),
   },
 
   // Comma-separated list so both local dev apps (candidate frontend + admin) can hit
